@@ -5,5 +5,5 @@ pandas>=2.2
 feedparser>=6.0
 vaderSentiment>=3.3.2
 pillow>=10.3
-easyocr>=1.7
+bcrypt>=4.1
 groq>=0.9

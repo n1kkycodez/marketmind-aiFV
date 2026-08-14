@@ -82,6 +82,11 @@ def inject_custom_css() -> None:
             padding: 22px 24px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.04);
             margin-bottom: 16px;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .mm-card:hover {
+            border-color: #d8d4fb;
+            box-shadow: 0 4px 14px rgba(167, 139, 250, 0.1);
         }
 
         .mm-logo {
@@ -121,6 +126,12 @@ def inject_custom_css() -> None:
             border: 1px solid var(--mm-border);
             border-radius: 14px;
             padding: 16px 18px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        .mm-metric-card:hover {
+            transform: translateY(-3px);
+            border-color: transparent;
+            box-shadow: 0 0 0 1.5px #a78bfa, 0 8px 20px rgba(167, 139, 250, 0.18);
         }
         .mm-metric-label {
             font-size: 0.72rem;
@@ -246,6 +257,24 @@ def inject_custom_css() -> None:
             border: 1px solid var(--mm-border);
             font-weight: 600;
             padding: 6px 18px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+        }
+        div.stButton > button:hover {
+            transform: scale(1.06);
+            background: linear-gradient(90deg, #ff2fb8, #a78bfa, #4dd0e1) !important;
+            background-size: 200% 200% !important;
+            animation: mm-gradient-flow 3s ease infinite;
+            color: #ffffff !important;
+            border-color: transparent !important;
+            box-shadow: 0 8px 22px rgba(167, 139, 250, 0.35);
+        }
+        div.stButton > button:active {
+            transform: scale(0.97);
+        }
+        /* Text inside a hovered button should stay white regardless of
+           Streamlit's internal markup (p tags, spans, etc. inside button) */
+        div.stButton > button:hover * {
+            color: #ffffff !important;
         }
 
         /* ---------------------------------------------------------- */
@@ -275,6 +304,29 @@ def inject_custom_css() -> None:
             padding: 22px 24px;
         }
 
+        /* Hover-only rainbow border wrapper — same visual as the permanent
+           Learn card, but the gradient stays invisible until hovered. Used
+           on Research/Explore so the whole trio shares one signature
+           interaction: hover = scale up + rainbow glow appears. */
+        .mm-rainbow-border-hover {
+            border-radius: 20px;
+            padding: 3px;
+            background: linear-gradient(90deg, #ff2fb8, #ff7a59, #ffd93d, #4dd0e1, #a78bfa, #ff2fb8);
+            background-size: 300% 300%;
+            margin-bottom: 16px;
+            opacity: 0;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+        .mm-rainbow-border-hover:hover {
+            opacity: 1;
+            animation: mm-rainbow-spin 8s linear infinite;
+            transform: scale(1.02);
+        }
+        .mm-rainbow-border-hover .mm-experience-card {
+            border: none;
+            box-shadow: none;
+        }
+
         .mm-experience-card {
             border-radius: 20px;
             padding: 28px 26px;
@@ -282,7 +334,9 @@ def inject_custom_css() -> None:
             background: #ffffff;
             box-shadow: 0 1px 3px rgba(0,0,0,0.04);
             height: 100%;
-            transition: transform 0.15s ease;
+            min-height: 230px;
+            box-sizing: border-box;
+            transition: transform 0.2s ease;
         }
         .mm-experience-icon {
             font-size: 2rem;
@@ -309,14 +363,8 @@ def inject_custom_css() -> None:
            ================================================================ */
 
         /* Smooth, cheap-to-render transitions used everywhere */
-        div.stButton > button, .mm-card, .mm-experience-card, .mm-feature-card {
-            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
-        }
-        div.stButton > button:hover {
-            transform: scale(1.02);
-        }
-        div.stButton > button:active {
-            transform: scale(0.98);
+        .mm-card, .mm-feature-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
         }
 
         /* Rainbow accent — used sparingly: focus rings, the Learn card,
@@ -453,10 +501,6 @@ def inject_custom_css() -> None:
             animation: mm-gradient-flow 6s ease infinite;
             box-shadow: 0 4px 16px rgba(167, 139, 250, 0.35);
             transition: transform 0.18s ease, box-shadow 0.18s ease;
-        }
-        .mm-cta-primary:hover {
-            transform: scale(1.04);
-            box-shadow: 0 6px 22px rgba(167, 139, 250, 0.45);
         }
         .mm-cta-secondary {
             display: inline-block;
@@ -667,6 +711,28 @@ def inject_custom_css() -> None:
             color: var(--mm-text-secondary);
         }
 
+        /* Staged loader: clean solid-color progress bar + narrated caption,
+           inspired by "AI pipeline stage" loading UX. Several selectors
+           are targeted since Streamlit's internal progress-bar DOM
+           structure has shifted across versions — if your installed
+           version doesn't match, the bar still works, it just keeps
+           Streamlit's default fill. */
+        div[data-testid="stProgress"] > div > div {
+            background: #f2f2f2 !important;
+            border-radius: 999px !important;
+            height: 6px !important;
+        }
+        div[data-testid="stProgress"] > div > div > div {
+            background: var(--mm-text-primary) !important;
+            border-radius: 999px !important;
+        }
+        .mm-loader-caption {
+            font-size: 0.85rem;
+            color: var(--mm-text-secondary);
+            margin-top: 6px;
+            font-weight: 500;
+        }
+
         /* Sticky glassmorphism nav — real position:sticky, always present
            from the top rather than JS-triggered "appear after N px
            scrolled" (that exact behavior needs scroll-listener JS, which
@@ -782,31 +848,56 @@ def inject_custom_css() -> None:
 # Experience switcher (Research / Learn / Explore)
 # ----------------------------------------------------------------------
 
-def render_experience_switcher(current: str | None) -> None:
-    """Persistent top-level switcher so people can move between the three
-    experiences from anywhere, without going back to the landing page."""
-    logo_col, r_col, l_col, e_col = st.columns([3, 2, 2, 2])
+def render_main_nav(experience: str | None, page: str, watchlist_count: int = 0, portfolio_count: int = 0) -> None:
+    """
+    One single nav row for the whole app, replacing what used to be two
+    stacked rows (top-level experience switcher + a second Research-only
+    sub-nav). Logo on the left, the three experiences always visible in
+    the middle, and — only while inside Research — a couple of smaller,
+    visually lighter secondary links on the right so they don't compete
+    for attention with the three main experiences.
+    """
+    if experience == "research":
+        logo_col, r_col, l_col, e_col, watch_col, portfolio_col = st.columns([2.4, 1.6, 1.6, 1.6, 1.5, 1.5])
+    else:
+        logo_col, r_col, l_col, e_col = st.columns([3, 2, 2, 2])
+
     with logo_col:
-        if st.button("MarketMind", key="switch_home"):
+        if st.button("MarketMind", key="nav_logo"):
             st.session_state["experience"] = None
             st.session_state["page"] = "home"
             st.rerun()
     with r_col:
-        if st.button("📈 Research", key="switch_research", use_container_width=True,
-                     type="primary" if current == "research" else "secondary"):
+        if st.button("📈 Research", key="nav_research", use_container_width=True,
+                     type="primary" if experience == "research" else "secondary"):
             st.session_state["experience"] = "research"
             st.session_state["page"] = "home"
             st.rerun()
     with l_col:
-        if st.button("🎓 Learn", key="switch_learn", use_container_width=True,
-                     type="primary" if current == "learn" else "secondary"):
+        if st.button("🎓 Learn", key="nav_learn", use_container_width=True,
+                     type="primary" if experience == "learn" else "secondary"):
             st.session_state["experience"] = "learn"
             st.rerun()
     with e_col:
-        if st.button("🔍 Explore", key="switch_explore", use_container_width=True,
-                     type="primary" if current == "explore" else "secondary"):
+        if st.button("🔍 Explore", key="nav_explore", use_container_width=True,
+                     type="primary" if experience == "explore" else "secondary"):
             st.session_state["experience"] = "explore"
             st.rerun()
+
+    if experience == "research":
+        with watch_col:
+            label = f"★ ({watchlist_count})" if watchlist_count else "☆ Watchlist"
+            if st.button(label, key="nav_watchlist", use_container_width=True,
+                         type="primary" if page == "watchlist" else "secondary"):
+                st.session_state["page"] = "watchlist"
+                st.rerun()
+        with portfolio_col:
+            label = f"Portfolio ({portfolio_count})" if portfolio_count else "Portfolio"
+            if st.button(label, key="nav_portfolio", use_container_width=True,
+                         type="primary" if page == "portfolio" else "secondary"):
+                st.session_state["page"] = "portfolio"
+                st.rerun()
+
     st.markdown(_html("<div style='height:8px'></div>"), unsafe_allow_html=True)
 
 
@@ -1311,6 +1402,63 @@ def render_company_facts(info: dict) -> None:
                     <div class="mm-metric-label">{label}</div>
                     <div class="mm-metric-value" style="font-size:0.95rem; word-break:break-word;">{value}</div>
                 </div>"""), unsafe_allow_html=True)
+
+
+# ----------------------------------------------------------------------
+# Staged progress loader
+# ----------------------------------------------------------------------
+# Inspired by a "narrated" loading pattern: instead of a bare spinner, show
+# a thin progress bar plus a caption that advances through named pipeline
+# stages ("Initialization", "Data Retrieval", "Compilation"...). The key
+# difference from a purely cosmetic version: each stage's percentage only
+# advances once its real work function actually finishes, so this never
+# adds artificial delay — it's genuine progress, just narrated.
+
+class StagedLoader:
+    def __init__(self):
+        self._bar = st.progress(0)
+        self._caption = st.empty()
+
+    def run_stage(self, label: str, fn):
+        """Renders `label` as the current stage, runs fn(), then returns
+        its result. Call this once per stage, in order."""
+        self._caption.markdown(
+            _html(f"<div class='mm-loader-caption'>{label}</div>"),
+            unsafe_allow_html=True,
+        )
+        result = fn()
+        return result
+
+    def advance(self, pct: int):
+        self._bar.progress(min(100, max(0, pct)))
+
+    def done(self):
+        self._bar.progress(100)
+        self._bar.empty()
+        self._caption.empty()
+
+
+def run_staged(stages: list[tuple[str, "callable"]]):
+    """
+    Convenience wrapper: stages is a list of (label, work_fn) pairs, run in
+    order with the progress bar advancing evenly between them. Returns the
+    list of results in the same order.
+
+    Example:
+        info, hist, news = run_staged([
+            ("Initialization — Pulling real-time quote and identifiers...", lambda: get_ticker_info(ticker)),
+            ("Data Retrieval — Fetching price history and financials...", lambda: get_price_history(ticker)),
+            ("Intelligence — Scanning news and analyst sentiment...", lambda: get_news(ticker)),
+        ])
+    """
+    loader = StagedLoader()
+    results = []
+    n = len(stages)
+    for i, (label, fn) in enumerate(stages):
+        loader.advance(int((i / n) * 100))
+        results.append(loader.run_stage(label, fn))
+    loader.done()
+    return results
 
 
 # ----------------------------------------------------------------------

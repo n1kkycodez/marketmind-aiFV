@@ -13,12 +13,12 @@ from components import (
     render_price_chart, render_news_section, render_ai_rating,
     render_financial_health, render_investment_thesis, render_competitor_table,
     render_index_cards, render_sector_performance, render_movers, render_market_pulse,
-    render_nav_bar, render_watchlist_page, render_explore_page,
+    render_main_nav, render_watchlist_page, render_explore_page,
     render_portfolio_summary, render_sector_allocation_chart,
     render_largest_holdings, render_portfolio_insights, render_section_title,
     render_auth_page, render_disclaimer_gate, render_academy_header,
     render_trade_form, render_holdings_table, render_trade_history,
-    render_experience_switcher, render_experience_chooser,
+    render_experience_chooser, run_staged, StagedLoader,
 )
 from data import (
     get_ticker_info, get_price_history, get_news, get_competitors_info,
@@ -71,15 +71,45 @@ def go_home():
 
 
 def render_company_page(ticker: str):
-    with st.spinner(f"Loading {ticker.upper()}..."):
-        info = get_ticker_info(ticker)
+    loader = StagedLoader()
+    loader.advance(0)
+    info = loader.run_stage(
+        "Initialization — Pulling real-time quote and identifiers...",
+        lambda: get_ticker_info(ticker),
+    )
 
     if info is None:
+        loader.done()
         st.error(f"Couldn't find data for **{ticker.upper()}**. Check the symbol and try again.")
         if st.button("← Back to search"):
             go_home()
             st.rerun()
         return
+
+    loader.advance(30)
+    hist = loader.run_stage(
+        "Data Retrieval — Fetching price history and financial statements...",
+        lambda: get_price_history(ticker, st.session_state["price_range"]),
+    )
+
+    loader.advance(60)
+    news = loader.run_stage(
+        "Intelligence — Scanning news and analyst sentiment...",
+        lambda: get_news(ticker, company_name=info.get("shortName", ticker)),
+    )
+
+    loader.advance(85)
+    summary, ai_rating_result, health, thesis = loader.run_stage(
+        "Compilation — Structuring the final research report...",
+        lambda: (
+            generate_executive_summary(info),
+            generate_ai_rating(info),
+            generate_financial_health(info),
+            generate_investment_thesis(info),
+        ),
+    )
+    rating, confidence = ai_rating_result
+    loader.done()
 
     ticker_upper = ticker.upper()
     on_watchlist = ticker_upper in load_watchlist()
@@ -104,24 +134,18 @@ def render_company_page(ticker: str):
     render_company_header(info, ticker, price, pct_change)
     render_company_facts(info)
 
-    summary = generate_executive_summary(info)
     render_executive_summary(summary)
 
     render_financial_snapshot(info, price, pct_change)
 
-    hist = get_price_history(ticker, st.session_state["price_range"])
     render_price_chart(hist, st.session_state["price_range"])
 
-    news = get_news(ticker, company_name=info.get("shortName", ticker))
     render_news_section(news)
 
-    rating, confidence = generate_ai_rating(info)
     render_ai_rating(rating, confidence)
 
-    health = generate_financial_health(info)
     render_financial_health(health)
 
-    thesis = generate_investment_thesis(info)
     render_investment_thesis(thesis["bull"], thesis["bear"], thesis["catalysts"], thesis["risks"])
 
     peers = PEER_MAP.get(ticker_upper)
@@ -156,11 +180,12 @@ def render_home_page():
         st.session_state["show_dashboard"] = show_dashboard
 
     if show_dashboard:
-        with st.spinner("Loading market data..."):
-            indices = get_market_indices()
-            sectors = get_sector_performance()
-            movers = get_market_movers()
-            pulse_news = get_market_pulse_news()
+        indices, sectors, movers, pulse_news = run_staged([
+            ("Initialization — Pulling major index quotes...", get_market_indices),
+            ("Sector Scan — Reading sector-level performance...", get_sector_performance),
+            ("Market Scan — Ranking today's gainers, losers, and most active...", get_market_movers),
+            ("Compilation — Structuring today's market pulse...", get_market_pulse_news),
+        ])
         pulse_summary = generate_market_pulse(indices, sectors, pulse_news)
         render_market_pulse(pulse_summary)
         render_index_cards(indices)
@@ -169,10 +194,17 @@ def render_home_page():
 
 
 def render_explore():
-    with st.spinner("Loading categories..."):
-        categories = {name: get_explore_category(name) for name in EXPLORE_CATEGORIES}
-        movers = get_market_movers(limit=10)
-        categories = {"Trending Today": movers["gainers"], **categories}
+    def _load_categories():
+        return {name: get_explore_category(name) for name in EXPLORE_CATEGORIES}
+
+    def _load_trending():
+        return get_market_movers(limit=10)
+
+    cat_data, movers = run_staged([
+        ("Scanning categories — AI, semiconductors, dividends, and more...", _load_categories),
+        ("Ranking trending movers...", _load_trending),
+    ])
+    categories = {"Trending Today": movers["gainers"], **cat_data}
     render_explore_page(categories)
 
 
@@ -302,8 +334,7 @@ if experience is None:
     render_experience_chooser()
 
 elif experience == "research":
-    render_experience_switcher("research")
-    render_nav_bar(st.session_state["page"], len(load_watchlist()), len(load_portfolio()))
+    render_main_nav("research", st.session_state["page"], len(load_watchlist()), len(load_portfolio()))
 
     if st.session_state["page"] == "watchlist":
         rows = get_watchlist_snapshot()
@@ -316,9 +347,9 @@ elif experience == "research":
         render_home_page()
 
 elif experience == "learn":
-    render_experience_switcher("learn")
+    render_main_nav("learn", st.session_state["page"])
     render_academy()
 
 elif experience == "explore":
-    render_experience_switcher("explore")
+    render_main_nav("explore", st.session_state["page"])
     render_explore()
